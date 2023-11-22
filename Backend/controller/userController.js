@@ -12,40 +12,32 @@ const createUser = (req, res) => {
       else if (result.rows.length > 0) {
         const useremail = result.rows[0].email;
         if (useremail === userdata.email) {
-          res.status(200).json({
-            message: "User Is Already Registered Please Use Another Email",
-          });
+          res.status(400);
+          throw new Error("User Is Already Registered Please Use Another Email");
         }
-      } else {
+      } else if (result.rows.length == 0) {
         //create new user account
         try {
           const query = `INSERT INTO UserData(username,email,password,PhoneNo,City) VALUES('${userdata.username}','${userdata.email}','${userdata.password}',${userdata.PhoneNo},'${userdata.City}');`;
           client.query(query, function (err, result) {
             if (err) throw err;
-            try {
+            else {
               var query = `SELECT * FROM userdata WHERE email = '${userdata.email}';`;
               client.query(query, function (err, result) {
                 if (err) throw err;
-                res
-                  .status(200)
-                  .json({ user: result.rows[0], token: generateToken(result.rows[0].user_id) });
+                else {
+                  //add 0 points to new created user 
+                  try {
+                    const query = `INSERT INTO pointsdata(user_id,points) VALUES('${result.rows[0].user_id}','0');`;
+                    client.query(query, function (err, result) {
+                      if (err) throw err;
+                    });
+                    res.status(200).json({ user: result.rows[0], token: generateToken(result.rows[0].user_id) });
+                  } catch (error) {
+                    console.log(error);
+                  }
+                }
               });
-            } catch (error) {
-              console.log(error);
-            }
-          });
-          client.query(query, function (err, result) {
-            if (err) throw err;
-            try {
-              var query = `SELECT * FROM userdata WHERE email = '${userdata.email}';`;
-              client.query(query, function (err, result) {
-                if (err) throw err;
-                res
-                  .status(200)
-                  .json({ user: result.rows[0], token: generateToken(result.rows[0].user_id) });
-              });
-            } catch (error) {
-              console.log(error);
             }
           });
         } catch (error) {
@@ -91,6 +83,8 @@ const loginUser = (req, res) => {
       const userpass = result.rows[0].password;
       if (useremail === userdata.email && userpass === userdata.password) {
         res.status(200).json({ user: result.rows[0], token: generateToken(result.rows[0].user_id) });
+      } else {
+        res.status(200).json({ message: "your credentials does not match please check" });
       }
     }
   });
